@@ -1,6 +1,7 @@
 future==0.15.2
-Lasagne==0.2.dev1
+https://github.com/Theano/Theano/archive/master.zip
+https://github.com/Lasagne/Lasagne/archive/master.zip
 numpy==1.11.2
 scipy==0.18.1
 six==1.10.0
-Theano==0.8.0
+
