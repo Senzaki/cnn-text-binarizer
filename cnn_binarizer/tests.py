@@ -45,13 +45,31 @@ class TestNetwork(object):
         normenc1_lay = lasagne.layers.BatchNormLayer(conv1_lay)
         relu1_lay = lasagne.layers.NonlinearityLayer(normenc1_lay, nonlinearity=lasagne.nonlinearities.rectify)
         pool1_lay = lasagne.layers.MaxPool2DLayer(relu1_lay, 2, stride=2) 
-        dropenc1_lay = lasagne.layers.DropoutLayer(pool1_lay, p=0.5)
+        # Third set of encoding layers
+        conv2_lay = lasagne.layers.Conv2DLayer(pool1_lay, 64, 5, W=relu_initializer)
+        normenc2_lay = lasagne.layers.BatchNormLayer(conv2_lay)
+        relu2_lay = lasagne.layers.NonlinearityLayer(normenc2_lay, nonlinearity=lasagne.nonlinearities.rectify)
+        pool2_lay = lasagne.layers.MaxPool2DLayer(relu2_lay, 2, stride=2) 
+        dropenc2_lay = lasagne.layers.DropoutLayer(pool2_lay, p=1.5)
+        # Fourth set of encoding layers
+        conv3_lay = lasagne.layers.Conv2DLayer(dropenc2_lay, 64, 5, W=relu_initializer)
+        normenc3_lay = lasagne.layers.BatchNormLayer(conv3_lay)
+        relu3_lay = lasagne.layers.NonlinearityLayer(normenc3_lay, nonlinearity=lasagne.nonlinearities.rectify)
+        pool3_lay = lasagne.layers.MaxPool2DLayer(relu3_lay, 2, stride=2) 
+        dropenc3_lay = lasagne.layers.DropoutLayer(pool3_lay, p=0.5)
         # First set of decoding layers
-        upsample1_lay = lasagne.layers.InverseLayer(dropenc1_lay, pool1_lay)
-        deconv1_lay = lasagne.layers.InverseLayer(upsample1_lay, conv1_lay)
-        dropdec1_lay = lasagne.layers.DropoutLayer(deconv1_lay, p=0.5)
+        upsample3_lay = lasagne.layers.InverseLayer(dropenc3_lay, pool3_lay)
+        deconv3_lay = lasagne.layers.InverseLayer(upsample3_lay, conv3_lay)
+        dropdec3_lay = lasagne.layers.DropoutLayer(deconv3_lay, p=0.5)
         # Second set of decoding layers
-        upsample0_lay = lasagne.layers.InverseLayer(dropdec1_lay, pool0_lay)
+        upsample2_lay = lasagne.layers.InverseLayer(dropdec3_lay, pool2_lay)
+        deconv2_lay = lasagne.layers.InverseLayer(upsample2_lay, conv2_lay)
+        dropdec2_lay = lasagne.layers.DropoutLayer(deconv2_lay, p=0.5)
+        # Third set of decoding layers
+        upsample1_lay = lasagne.layers.InverseLayer(dropdec2_lay, pool1_lay)
+        deconv1_lay = lasagne.layers.InverseLayer(upsample1_lay, conv1_lay)
+        # Fourth set of decoding layers
+        upsample0_lay = lasagne.layers.InverseLayer(deconv1_lay, pool0_lay)
         deconv0_lay = lasagne.layers.InverseLayer(upsample0_lay, conv0_lay)
         # Classifying (softmax layer)
         classes_lay = lasagne.layers.Conv2DLayer(deconv0_lay, 2, 1)
