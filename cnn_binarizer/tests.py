@@ -109,12 +109,18 @@ class TestNetwork(object):
         for num_test in range(50):
             i = np.random.randint(TRAINING_SAMPLES)
             plt.figure()
-            plt.subplot(2, 1, 1)
+            plt.subplot(2, 2, 1)
+            plt.imshow(input[i, :, :, :].reshape((INPUT_SIZE, INPUT_SIZE)))
+            plt.colorbar()
+            plt.subplot(2, 2, 2)
             plt.imshow(labels[i, :, :].argmax(axis=0).reshape((INPUT_SIZE, INPUT_SIZE)))
             plt.colorbar()
-            prediction = self.forward_fn(input[[i], :, :, :])[1, :, :]
-            plt.subplot(2, 1, 2)
-            plt.imshow(prediction)
+            prediction = self.forward_fn(input[[i], :, :, :])
+            plt.subplot(2, 2, 3)
+            plt.imshow(prediction[1, :, :])
+            plt.colorbar()
+            plt.subplot(2, 2, 4)
+            plt.imshow(prediction.argmax(axis=0))
             plt.colorbar()
             plt.show()
         return loss
@@ -135,7 +141,7 @@ def run_testnetwork_test(dataset):
     for sample_idx in range(TRAINING_SAMPLES):
         for pixel_idx in range(INPUT_SIZE * INPUT_SIZE):
             train_labels[sample_idx, int(train_labels_indices[sample_idx, pixel_idx]), pixel_idx] = 1
-    final_loss = network.train(train_input, train_labels, 10)
+    final_loss = network.train(train_input, train_labels, 1)
     print('Final loss:', final_loss)
     return network
 
