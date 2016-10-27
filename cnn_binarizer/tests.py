@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 
 from cnn_binarizer import datasets
 
-TRAINING_SAMPLES = 1
-INPUT_SIZE = 100
+TRAINING_SAMPLES = 1000
+INPUT_SIZE = 200
 
 def log_softmax(x):
     xdev = x - x.max(axis=1, keepdims=True)
@@ -36,23 +36,25 @@ class TestNetwork(object):
         # Input layer
         in_lay = lasagne.layers.InputLayer(self.input_shape, input_var=self.input_var)
         # First set of encoding layers
-        conv0_lay = lasagne.layers.Conv2DLayer(in_lay, 256, 5, W=relu_initializer, nonlinearity=lasagne.nonlinearities.rectify)
-        norm0_lay = lasagne.layers.BatchNormLayer(conv0_lay)
-        relu0_lay = lasagne.layers.NonlinearityLayer(norm0_lay, nonlinearity=lasagne.nonlinearities.rectify)
+        conv0_lay = lasagne.layers.Conv2DLayer(in_lay, 64, 5, W=relu_initializer, nonlinearity=lasagne.nonlinearities.rectify)
+        normenc0_lay = lasagne.layers.BatchNormLayer(conv0_lay)
+        relu0_lay = lasagne.layers.NonlinearityLayer(normenc0_lay, nonlinearity=lasagne.nonlinearities.rectify)
         pool0_lay = lasagne.layers.MaxPool2DLayer(relu0_lay, 2, stride=2)
         # Second set of encoding layers
-        conv1_lay = lasagne.layers.Conv2DLayer(pool0_lay, 128, 5, W=relu_initializer)
-        norm1_lay = lasagne.layers.BatchNormLayer(conv1_lay)
-        relu1_lay = lasagne.layers.NonlinearityLayer(norm1_lay, nonlinearity=lasagne.nonlinearities.rectify)
+        conv1_lay = lasagne.layers.Conv2DLayer(pool0_lay, 64, 5, W=relu_initializer)
+        normenc1_lay = lasagne.layers.BatchNormLayer(conv1_lay)
+        relu1_lay = lasagne.layers.NonlinearityLayer(normenc1_lay, nonlinearity=lasagne.nonlinearities.rectify)
         pool1_lay = lasagne.layers.MaxPool2DLayer(relu1_lay, 2, stride=2) 
+        dropenc1_lay = lasagne.layers.DropoutLayer(pool1_lay, p=0.5)
         # First set of decoding layers
-        upsample1_lay = lasagne.layers.InverseLayer(pool1_lay, pool1_lay)
+        upsample1_lay = lasagne.layers.InverseLayer(dropenc1_lay, pool1_lay)
         deconv1_lay = lasagne.layers.InverseLayer(upsample1_lay, conv1_lay)
+        dropdec1_lay = lasagne.layers.DropoutLayer(deconv1_lay, p=0.5)
         # Second set of decoding layers
-        upsample2_lay = lasagne.layers.InverseLayer(deconv1_lay, pool0_lay)
-        deconv2_lay = lasagne.layers.InverseLayer(upsample2_lay, conv0_lay)
+        upsample0_lay = lasagne.layers.InverseLayer(dropdec1_lay, pool0_lay)
+        deconv0_lay = lasagne.layers.InverseLayer(upsample0_lay, conv0_lay)
         # Classifying (softmax layer)
-        classes_lay = lasagne.layers.Conv2DLayer(deconv2_lay, 2, 1)
+        classes_lay = lasagne.layers.Conv2DLayer(deconv0_lay, 2, 1)
         outshape_lay = lasagne.layers.ReshapeLayer(classes_lay, (2, INPUT_SIZE * INPUT_SIZE))
         shuffle_lay = lasagne.layers.DimshuffleLayer(outshape_lay, (1, 0))
         softmax_lay = lasagne.layers.NonlinearityLayer(shuffle_lay, nonlinearity=log_softmax)
@@ -79,14 +81,14 @@ class TestNetwork(object):
         output_image = T.exp(T.reshape(test_prediction, (2, INPUT_SIZE, INPUT_SIZE)))
         self.forward_fn = theano.function([self.input_var], output_image)
 
-    def train(self, input, labels, num_epochs=10):
+    def train(self, input, labels, num_epochs=1):
         print('Starting training...')
         for epoch in range(num_epochs):
             print('Epoch {0}/{1}'.format(epoch + 1, num_epochs))
             for i in range(TRAINING_SAMPLES):
                 loss = self.train_fn(input[[i], :, :, :], labels[i, :, :])
                 print('Loss:', loss)
-        for num_test in range(1):
+        for num_test in range(50):
             i = np.random.randint(TRAINING_SAMPLES)
             plt.figure()
             plt.subplot(2, 1, 1)
@@ -97,8 +99,6 @@ class TestNetwork(object):
             plt.imshow(prediction)
             plt.colorbar()
             plt.show()
-            print(prediction)
-            print(labels[i, :, :].argmax(axis=0).reshape((INPUT_SIZE, INPUT_SIZE)))
         return loss
 
     def test_stats(self, input, labels):
@@ -117,8 +117,7 @@ def run_testnetwork_test(dataset):
     for sample_idx in range(TRAINING_SAMPLES):
         for pixel_idx in range(INPUT_SIZE * INPUT_SIZE):
             train_labels[sample_idx, int(train_labels_indices[sample_idx, pixel_idx]), pixel_idx] = 1
-    print(train_labels)
-    final_loss = network.train(train_input, train_labels)
+    final_loss = network.train(train_input, train_labels, 10)
     print('Final loss:', final_loss)
     return network
 
