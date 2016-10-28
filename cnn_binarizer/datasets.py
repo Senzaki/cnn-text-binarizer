@@ -107,6 +107,7 @@ class TrainingDataSet(object):
             raise ValueError('samples_size must contain 2 values.')
         input_array = np.empty((num_samples, 1, samples_size[0], samples_size[1]), dtype=dtype)
         labels_array = np.empty(input_array.shape, dtype=dtype)
+        shuffled_indices = np.random.permutation(num_samples)
         for image_name in self.splitter.training_names:
             if current_array_index != num_samples:
                 with self.input_dataset.open_image(image_name).convert('F') as input_image, self.labels_dataset.open_image(image_name).convert('F') as label_image:
@@ -120,9 +121,10 @@ class TrainingDataSet(object):
                         for patch_index in range(num_samples_for_image):
                             x = np.random.randint(0, w - samples_size[0])
                             y = np.random.randint(0, h - samples_size[1])
+                            shuffled_index = shuffled_indices[current_array_index]
                             rect = (x, y, x + samples_size[0], y + samples_size[1])
-                            input_array[current_array_index, 0, :, :] = np.asarray(input_image.crop(rect), dtype=dtype)
-                            labels_array[current_array_index, 0, :, :] = np.asarray(label_image.crop(rect), dtype=dtype)
+                            input_array[shuffled_index, 0, :, :] = np.asarray(input_image.crop(rect), dtype=dtype)
+                            labels_array[shuffled_index, 0, :, :] = np.asarray(label_image.crop(rect), dtype=dtype)
                             current_array_index += 1
                 remaining_images -= 1
         if current_array_index != num_samples:
