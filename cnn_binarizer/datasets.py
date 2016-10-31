@@ -5,13 +5,17 @@ from __future__ import absolute_import, division, print_function
 from builtins import *
 
 from PIL import Image
-from os import walk
-from os.path import relpath
-from os.path import splitext
+import os
 import numpy as np
 import theano
 from math import floor
 import sys
+try:
+    from urllib.request import urlopen
+except ImportError:
+    from urllib2 import urlopen
+import shutil
+import tarfile
 
 DEFAULT_SPLIT_RATIO = 0.8
 
@@ -23,12 +27,12 @@ class DataSet(object):
 
     def preload(self):
         """Finds all usable images in the path."""
-        for (path, _, files) in walk(self.folder):
-            path = relpath(path, self.folder)
+        for (path, _, files) in os.walk(self.folder):
+            path = os.relpath(path, self.folder)
             for filename in files:
                 if path != '.':
                     filename = path + '/' + filename
-                (name, _) = splitext(filename)
+                (name, _) = os.splitext(filename)
                 if name in self.imagespaths:
                     print('Warning: ' + name + ' corresponds to several images in the dataset.')
                 self.imagespaths[name] = self.folder + '/' + filename
@@ -131,5 +135,33 @@ class TrainingDataSet(object):
             raise RuntimeError('Not enough samples were generated (not enough valid images?)')
         return input_array / 255, labels_array / 255
 
+def download_dataset(url, dest_filename):
+    with urlopen(url) as response, open(dest_filename, 'wb') as out_file:
+        shutil.copyfileobj(response, out_file)
+
+def extract_dataset(archive_filename, dest_path):
+    if archive_filename.endswith('.tar.gz'):
+        with tarfile.open(archive_filename, 'r:gz') as archive:
+            archive.extractall()
+    elif archive_filename.endswith('.tar'):
+        with tarfile.open(archive_filename, 'r:') as archive:
+            archive.extractall()
+    else:
+        raise RuntimeError('Unrecognized archive type for file: ' + archive_filename)
+
+def autofetch_dataset(url, dest_filename, expected_name, dest_path='.', cache_path='.'):
+    dest_filename = os.path.join(cache_path, dest_filename)
+    expected_name = os.path.join(dest_path, expected_name)
+    if not os.path.isdir(dest_path):
+        os.makedirs(dest_path)
+    if not os.path.isdir(expected_name):
+        download_file = os.path.isfile(dest_filename)
+        if download_file:
+            if not os.path.exists(cache_path):
+                os.makedirs(cache_path)
+                download_dataset(url, dest_filename)
+        extract_dataset(dest_filename, dest_path)
+        if download_file and os.path.isfile(dest_filename):
+            os.remove(dest_filename)
 
 
