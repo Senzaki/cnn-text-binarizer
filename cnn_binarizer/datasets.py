@@ -19,9 +19,9 @@ import tarfile
 
 DEFAULT_SPLIT_RATIO = 0.8
 
-class DataSet(object):
+class DataSetLoader(object):
     def __init__(self, folder):
-        super(DataSet, self).__init__()
+        super(DataSetLoader, self).__init__()
         self.folder = folder
         self.imagespaths = {}
 
@@ -98,21 +98,27 @@ class DataSetSplitter(object):
 class TrainingDataSet(object):
     def __init__(self, input_folder, labels_folder, training_ratio=DEFAULT_SPLIT_RATIO):
         super(TrainingDataSet, self).__init__()
-        self.input_dataset = DataSet(input_folder)
+        self.input_dataset = DataSetLoader(input_folder)
         self.input_dataset.preload()
-        self.labels_dataset = DataSet(labels_folder)
+        self.labels_dataset = DataSetLoader(labels_folder)
         self.labels_dataset.preload()
         self.splitter = DataSetSplitter(self.input_dataset, self.labels_dataset, training_ratio)
 
-    def create_training_arrays(self, num_samples, samples_size, dtype=theano.config.floatX):
-        remaining_images = self.splitter.training_names.size
+    def create_training_arrays(self, *args, **kwargs):
+        return self.create_random_arrays(self.splitter.training_names, *args, **kwargs)
+
+    def create_validation_arrays(self, *args, **kwargs):
+        return self.create_random_arrays(self.splitter.validation_names, *args, **kwargs)
+
+    def create_random_arrays(self, image_names, num_samples, samples_size, dtype=theano.config.floatX):
+        remaining_images = image_names.size
         current_array_index = 0
         if len(samples_size) != 2:
             raise ValueError('samples_size must contain 2 values.')
         input_array = np.empty((num_samples, 1, samples_size[0], samples_size[1]), dtype=dtype)
         labels_array = np.empty(input_array.shape, dtype=dtype)
         shuffled_indices = np.random.permutation(num_samples)
-        for image_name in self.splitter.training_names:
+        for image_name in image_names:
             if current_array_index != num_samples:
                 with self.input_dataset.open_image(image_name).convert('F') as input_image, self.labels_dataset.open_image(image_name).convert('F') as label_image:
                     num_samples_for_image = (num_samples - current_array_index) // remaining_images
