@@ -28,11 +28,11 @@ class DataSet(object):
     def preload(self):
         """Finds all usable images in the path."""
         for (path, _, files) in os.walk(self.folder):
-            path = os.relpath(path, self.folder)
+            path = os.path.relpath(path, self.folder)
             for filename in files:
                 if path != '.':
                     filename = path + '/' + filename
-                (name, _) = os.splitext(filename)
+                (name, _) = os.path.splitext(filename)
                 if name in self.imagespaths:
                     print('Warning: ' + name + ' corresponds to several images in the dataset.')
                 self.imagespaths[name] = self.folder + '/' + filename
@@ -136,10 +136,13 @@ class TrainingDataSet(object):
         return input_array / 255, labels_array / 255
 
 def download_dataset(url, dest_filename):
+    print('Downloading "' + url + '"...')
     with urlopen(url) as response, open(dest_filename, 'wb') as out_file:
         shutil.copyfileobj(response, out_file)
+    print('Saved to file "' + dest_filename + '".')
 
 def extract_dataset(archive_filename, dest_path):
+    print('Extracting "' + archive_filename + '" to "' + dest_path + '"...')
     if archive_filename.endswith('.tar.gz'):
         with tarfile.open(archive_filename, 'r:gz') as archive:
             archive.extractall()
@@ -147,7 +150,8 @@ def extract_dataset(archive_filename, dest_path):
         with tarfile.open(archive_filename, 'r:') as archive:
             archive.extractall()
     else:
-        raise RuntimeError('Unrecognized archive type for file: ' + archive_filename)
+        raise RuntimeError('Unrecognized archive type for file: "' + archive_filename + '".')
+    print('Done.')
 
 def autofetch_dataset(url, dest_filename, expected_name, dest_path='.', cache_path='.'):
     dest_filename = os.path.join(cache_path, dest_filename)
@@ -155,13 +159,30 @@ def autofetch_dataset(url, dest_filename, expected_name, dest_path='.', cache_pa
     if not os.path.isdir(dest_path):
         os.makedirs(dest_path)
     if not os.path.isdir(expected_name):
-        download_file = os.path.isfile(dest_filename)
+        download_file = not os.path.isfile(dest_filename)
         if download_file:
             if not os.path.exists(cache_path):
                 os.makedirs(cache_path)
-                download_dataset(url, dest_filename)
+            download_dataset(url, dest_filename)
         extract_dataset(dest_filename, dest_path)
         if download_file and os.path.isfile(dest_filename):
             os.remove(dest_filename)
 
+DEFAULT_DATASETS = {
+    'dibco': {
+        'url': 'https://www.dropbox.com/s/mtvetjy2zz3oi8f/data.tar.gz?dl=1',
+        'dest_filename': 'dibco.tar.gz',
+        'expected_name': 'data/train/input/DIBCO/',
+        'train_input': 'data/train/input/DIBCO/',
+        'train_labels': 'data/train/labels/DIBCO/',
+        'test_input': 'data/test/input/DIBCO/',
+        'test_labels': 'data/test/labels/DIBCO/'
+    }
+}
+
+def autoload_dataset(name, training_ratio=DEFAULT_SPLIT_RATIO):
+    info = DEFAULT_DATASETS[name]
+    autofetch_dataset(info['url'], info['dest_filename'], info['expected_name'])
+    training_set = TrainingDataSet(info['train_input'], info['train_labels'], training_ratio=training_ratio)
+    return training_set
 

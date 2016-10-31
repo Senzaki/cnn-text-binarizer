@@ -144,11 +144,8 @@ def run_testnetwork_test(dataset):
     print('Final loss:', final_loss)
     return network
 
-def load_datasets():
-    return datasets.TrainingDataSet('data/train/input', 'data/train/labels')
-
 def run_all_tests():
-    dataset = load_datasets()
+    dataset = datasets.autoload_dataset('dibco')
     run_testnetwork_test(dataset)
 
 if __name__ == '__main__':
